@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Outliers and Book Sales</title>
+<style>
+  :root{
+    --bg:#ffffff;
+    --fg:#1f2937;
+    --muted:#6b7280;
+    --grid:#e5e7eb;
+    --bar:#4e79a7;
+    --accent:#b91c1c;
+    --panel:#f8fafc;
+    --border:#d1d5db;
+  }
+  body{
+    margin:0;
+    font-family: Arial, Helvetica, sans-serif;
+    background:var(--bg);
+    color:var(--fg);
+  }
+  .wrap{
+    max-width:1180px;
+    margin:0 auto;
+    padding:24px 24px 32px;
+  }
+  h1{
+    margin:0 0 8px;
+    font-size:28px;
+    line-height:1.15;
+  }
+  .subtitle{
+    margin:0 0 14px;
+    color:var(--muted);
+    font-size:15px;
+    line-height:1.45;
+    max-width:1000px;
+  }
+  .controls{
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+    align-items:center;
+    margin:16px 0 18px;
+  }
+  button{
+    border:1px solid var(--border);
+    background:white;
+    color:var(--fg);
+    padding:9px 12px;
+    border-radius:8px;
+    cursor:pointer;
+    font-size:14px;
+  }
+  button:hover{ background:#f3f4f6; }
+  button.active{
+    background:#111827;
+    color:white;
+    border-color:#111827;
+  }
+  .status{
+    font-size:14px;
+    color:var(--muted);
+    margin-left:auto;
+  }
+  .panel{
+    border:1px solid var(--border);
+    border-radius:14px;
+    background:var(--panel);
+    padding:14px 14px 10px;
+  }
+  svg{
+    width:100%;
+    height:auto;
+    display:block;
+    background:white;
+    border-radius:10px;
+  }
+  .axis text, .label, .value, .smallnote{
+    font-family: Arial, Helvetica, sans-serif;
+    fill: var(--fg);
+  }
+  .axis text{ font-size:12px; }
+  .smallnote{ font-size:13px; fill: var(--muted); }
+  .bar{ fill: var(--bar); }
+  .label{
+    font-size:13px;
+    dominant-baseline:middle;
+  }
+  .value{
+    font-size:12px;
+    fill: var(--muted);
+    dominant-baseline:middle;
+  }
+  .chart-title{
+    font-size:18px;
+    font-weight:700;
+  }
+  .chart-subtitle{
+    font-size:13px;
+    fill: var(--muted);
+  }
+  .callout{
+    fill: var(--accent);
+    font-size:13px;
+    font-weight:700;
+  }
+  .foot{
+    margin-top:10px;
+    color:var(--muted);
+    font-size:13px;
+    line-height:1.45;
+  }
+  .legend{
+    display:flex;
+    gap:24px;
+    flex-wrap:wrap;
+    align-items:center;
+    margin-top:14px;
+    color:var(--muted);
+    font-size:12px;
+  }
+  .legend div{
+    display:flex;
+    align-items:center;
+  }
+  .swatch{
+    display:inline-block;
+    width:10px;
+    height:10px;
+    border-radius:2px;
+    margin-right:8px;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>How outliers flatten a chart: estimated copies sold</h1>
+  <p class="subtitle">
+    This corrected interactive graphic uses the figures from the original infographic but labels them more honestly as
+    <strong>estimated copies sold</strong>, not “most read.” Use the buttons or autoplay to compare the full ranking with
+    views that exclude increasingly large outliers.
+  </p>
+
+  <div class="controls">
+    <button id="stage0" class="active">1. Show all titles</button>
+    <button id="stage1">2. Exclude Bible</button>
+    <button id="stage2">3. Exclude Bible and Mao</button>
+    <button id="stage3">4. Exclude Bible, Mao, and Harry Potter</button>
+    <button id="play">Pause autoplay</button>
+    <span class="status" id="status">Autoplay on · 4 stages looping</span>
+  </div>
+
+  <div class="panel">
+    <svg id="chart" viewBox="0 0 1040 700" aria-label="Interactive bar chart showing outlier effects"></svg>
+  </div>
+
+  <p class="foot">
+    Values are the approximate figures shown in the original graphic, in millions of copies sold. They do not measure actual readership,
+    and titles here are not perfectly comparable across single books, series, religious texts, and political texts.
+  </p>
+</div>
+
+<script>
+const data = [
+  {name:"The Holy Bible", value:3900},
+  {name:"Quotations from Chairman Mao Tse-Tung", value:820},
+  {name:"Harry Potter", value:400},
+  {name:"The Lord of the Rings", value:103},
+  {name:"The Alchemist", value:65},
+  {name:"The Da Vinci Code", value:57},
+  {name:"The Twilight Saga", value:43},
+  {name:"Gone with the Wind", value:33},
+  {name:"Think and Grow Rich", value:30},
+  {name:"The Diary of Anne Frank", value:27}
+];
+
+const stages = [
+  {
+    key: "all",
+    title: "Stage 1: All titles shown",
+    subtitle: "The Holy Bible is such a large outlier that it flattens the rest of the comparison.",
+    shown: data.map(d => d.name),
+    excluded: []
+  },
+  {
+    key: "noBible",
+    title: "Stage 2: Excluding the largest outlier",
+    subtitle: "Once the Bible is removed, the remaining differences become much easier to inspect.",
+    shown: data.slice(1).map(d => d.name),
+    excluded: ["The Holy Bible"]
+  },
+  {
+    key: "noTwo",
+    title: "Stage 3: Excluding two large outliers",
+    subtitle: "Removing both large outliers reveals differences among the remaining titles much more clearly.",
+    shown: data.slice(2).map(d => d.name),
+    excluded: ["The Holy Bible", "Quotations from Chairman Mao Tse-Tung"]
+  },
+  {
+    key: "noThree",
+    title: "Stage 4: Excluding three large outliers",
+    subtitle: "Removing Harry Potter as well reveals finer differences among the remaining titles, though it also changes the comparison set further.",
+    shown: data.slice(3).map(d => d.name),
+    excluded: ["The Holy Bible", "Quotations from Chairman Mao Tse-Tung", "Harry Potter"]
+  }
+];
+
+const svg = document.getElementById("chart");
+const W = 1040, H = 700;
+const margin = {top: 126, right: 120, bottom: 72, left: 340};
+const plotW = W - margin.left - margin.right;
+const plotH = H - margin.top - margin.bottom;
+
+let stageIndex = 0;
+let autoplay = true;
+let timer = null;
+
+function fmt(x){
+  return x.toLocaleString() + "M";
+}
+
+function clearSVG(){
+  while(svg.firstChild) svg.removeChild(svg.firstChild);
+}
+
+function addText(x, y, txt, cls, anchor="start"){
+  const t = document.createElementNS("http://www.w3.org/2000/svg", "text");
+  t.setAttribute("x", x);
+  t.setAttribute("y", y);
+  t.setAttribute("class", cls);
+  t.setAttribute("text-anchor", anchor);
+  t.textContent = txt;
+  svg.appendChild(t);
+  return t;
+}
+
+function addLine(x1, y1, x2, y2, cls){
+  const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+  line.setAttribute("x1", x1);
+  line.setAttribute("y1", y1);
+  line.setAttribute("x2", x2);
+  line.setAttribute("y2", y2);
+  line.setAttribute("class", cls);
+  svg.appendChild(line);
+  return line;
+}
+
+function addRect(x, y, width, height, cls="", rx=0){
+  const r = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+  r.setAttribute("x", x);
+  r.setAttribute("y", y);
+  r.setAttribute("width", width);
+  r.setAttribute("height", height);
+  if (cls) r.setAttribute("class", cls);
+  if (rx) r.setAttribute("rx", rx);
+  svg.appendChild(r);
+  return r;
+}
+
+function render(stageIdx){
+  stageIndex = stageIdx;
+  document.querySelectorAll(".controls button[id^='stage']").forEach((btn, i) => {
+    btn.classList.toggle("active", i === stageIdx);
+  });
+
+  const stage = stages[stageIdx];
+  const shownNames = new Set(stage.shown);
+  const excludedNames = new Set(stage.excluded);
+
+  const shown = data.filter(d => shownNames.has(d.name));
+  const excluded = data.filter(d => excludedNames.has(d.name));
+
+  const maxVal = Math.max(...shown.map(d => d.value));
+  const xScale = val => margin.left + (val / maxVal) * plotW;
+
+  clearSVG();
+
+  addText(18, 34, "Estimated copies sold of selected books and book series", "chart-title");
+  addText(18, 58, "Values shown in millions; copies sold are not the same thing as readership.", "chart-subtitle");
+  addText(18, 90, stage.title, "smallnote");
+  addText(18, 110, stage.subtitle, "smallnote");
+
+  const ticks = 5;
+  for(let i=0; i<=ticks; i++){
+    const val = Math.round(maxVal * i / ticks);
+    const x = xScale(val);
+    const grid = addLine(x, margin.top, x, margin.top + plotH, "grid");
+    grid.setAttribute("stroke", "#e5e7eb");
+    grid.setAttribute("stroke-width", "1");
+    const tick = addText(x, margin.top + plotH + 22, val.toLocaleString(), "axis", "middle");
+    tick.setAttribute("fill", "#6b7280");
+  }
+
+  addText(
+    margin.left + plotW / 2,
+    margin.top + plotH + 48,
+    "Estimated copies sold (millions)",
+    "smallnote",
+    "middle"
+  );
+
+  const rowH = plotH / shown.length;
+  const barH = Math.min(34, rowH * 0.64);
+
+  shown.forEach((d, i) => {
+    const cy = margin.top + rowH * i + rowH / 2;
+    addText(margin.left - 12, cy, d.name, "label", "end");
+
+    const w = xScale(d.value) - margin.left;
+    const barEnd = margin.left + w;
+    addRect(margin.left, cy - barH / 2, w, barH, "bar", 3);
+
+    // Keep labels outside for stage 4, and also keep the Holy Bible label
+    // outside in stage 1 for readability.
+    let inside = false;
+    if (stage.key === "all") {
+      inside = w > 140 && i !== 0;
+    }
+
+    const valueX = inside ? barEnd - 8 : barEnd + 8;
+    const valueAnchor = inside ? "end" : "start";
+    const valueText = addText(valueX, cy, fmt(d.value), "value", valueAnchor);
+
+    // Only labels that are actually inside bars should switch to white.
+    if (inside) {
+      valueText.style.fill = "white";
+    }
+  });
+
+  if(excluded.length){
+    const boxX = W - 255;
+    const boxY = 16;
+    const boxW = 225;
+    const boxH = 30 + excluded.length * 22;
+
+    const box = addRect(boxX, boxY, boxW, boxH, "", 8);
+    box.setAttribute("fill", "#fff7ed");
+    box.setAttribute("stroke", "#fed7aa");
+
+    addText(boxX + 12, boxY + 22, "Excluded in this step:", "callout");
+
+    excluded.forEach((d, j) => {
+      addText(
+        boxX + 12,
+        boxY + 46 + j * 20,
+        `${d.name} (${fmt(d.value)})`,
+        "smallnote"
+      );
+    });
+  }
+
+  document.getElementById("status").textContent = autoplay
+    ? "Autoplay on · 4 stages looping"
+    : "Autoplay paused";
+}
+
+function nextStage(){
+  render((stageIndex + 1) % stages.length);
+}
+
+function startTimer(){
+  if(timer) clearInterval(timer);
+  if(autoplay){
+    timer = setInterval(nextStage, 2600);
+  }
+}
+
+function pauseAndRender(idx){
+  autoplay = false;
+  document.getElementById("play").textContent = "Resume autoplay";
+  render(idx);
+  startTimer();
+}
+
+document.getElementById("stage0").addEventListener("click", () => pauseAndRender(0));
+document.getElementById("stage1").addEventListener("click", () => pauseAndRender(1));
+document.getElementById("stage2").addEventListener("click", () => pauseAndRender(2));
+document.getElementById("stage3").addEventListener("click", () => pauseAndRender(3));
+document.getElementById("play").addEventListener("click", (e) => {
+  autoplay = !autoplay;
+  e.target.textContent = autoplay ? "Pause autoplay" : "Resume autoplay";
+  render(stageIndex);
+  startTimer();
+});
+
+render(0);
+startTimer();
+</script>
+</body>
+</html>
